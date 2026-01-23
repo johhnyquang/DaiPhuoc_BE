@@ -1,10 +1,12 @@
 ﻿using DaiPhuocBE.DTOs.AuthDTOs;
 using DaiPhuocBE.Services.AuthServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DaiPhuocBE.Controllers
 {
+    [AllowAnonymous]
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController(IAuthService authService) : ControllerBase
@@ -28,6 +30,26 @@ namespace DaiPhuocBE.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, $"Internal Server Error {ex.Message}");
             }
-        } 
+        }
+
+        [HttpPost("Login")]
+        public async Task<IActionResult> LoginAsync([FromBody] LoginRequest loginRequest)
+        {
+            try
+            {
+                var result = await _authService.Login(loginRequest);
+                if (!result.Success)
+                {
+                    return BadRequest(result);
+                }
+
+                return Ok(result);
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Internal Server Error {ex.Message}");
+            }
+        }
     }
 }

@@ -6,9 +6,11 @@ namespace DaiPhuocBE.Repositories
     public interface IUnitOfWork : IDisposable
     {
         public IUserRepository UserRepository { get; }
-        public IRepositoryBase<Btdbn> BTDBNRepository { get; }
-        public IRepositoryBase<TinhThanh> TinhThanhRepository { get; }
-        public IRepositoryBase<PhuongXa> PhuongXaRepository { get; }    
+        public IRepositoryBase<Btdbn> BtdbnRepository { get; }
+        public IRepositoryBase<Tinhthanh> TinhThanhRepository { get; }
+        public IRepositoryBase<Phuongxa> PhuongXaRepository { get; }
+        public IRepositoryBase<Btddt> DanTocRepository { get; }
+        public IRepositoryBase<Dmquocgium> DmQuocGiaRepository { get; }
         Task<int> SaveChangesAsync();
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();
