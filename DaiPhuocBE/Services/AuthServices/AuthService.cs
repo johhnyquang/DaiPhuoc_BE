@@ -1,25 +1,258 @@
-﻿using DaiPhuocBE.DTOs;
+﻿using DaiPhuocBE.DependencyInjection.Options;
+using DaiPhuocBE.DTOs;
 using DaiPhuocBE.DTOs.AuthDTOs;
+using DaiPhuocBE.Models.Master;
+using DaiPhuocBE.Repositories;
+using DaiPhuocBE.Repositories.UserRepository;
+using Microsoft.Extensions.Options;
+using Microsoft.Win32;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DaiPhuocBE.Services.AuthServices
 {
-    public class AuthService : IAuthService
+    public class AuthService(ITokenService tokenService, IUnitOfWork unitOfWork, ILogger<AuthService> logger, IOptions<JwtSettings> options) : IAuthService
     {
-        private readonly ITokenService _tokenService;
-        private 
-        public AuthService()
+        private readonly ITokenService _tokenService = tokenService;
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly ILogger<AuthService> _logger = logger;
+        private readonly JwtSettings _jwtSettings = options.Value;
+
+        const int keySize = 64;
+        const int iterations = 350000;
+        HashAlgorithmName hashAlgorithm = HashAlgorithmName.SHA512;
+
+        public async Task<APIResponse<LoginResponse>> Login(LoginRequest loginRequest)
         {
-            
+            var inputValidation = InputValidation(loginRequest, null);
+
+            if (!inputValidation.Item1)
+            {
+                return new APIResponse<LoginResponse>(success: inputValidation.Item1, message: inputValidation.Item2);
+            }
+
+            try
+            {
+                var user = await _unitOfWork.UserRepository.GetUserBySocmndAsync(loginRequest.CCCD);
+                if (user == null)
+                {
+                    return new APIResponse<LoginResponse>(success: false, message: "CCCD hoặc mật khẩu không chính xác", null);
+                }
+
+                // Nếu như user tồn tại thì check password 
+                bool verifyPassword = VerifyPassword(loginRequest.Password, user.PasswordHash);
+
+                if (!verifyPassword)
+                {
+                    return new APIResponse<LoginResponse>(
+                        success: false,
+                        message: "CCCD hoặc mật khẩu không chính xác"
+                    );
+                }
+
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user .Id.ToString()),
+                    new Claim(ClaimTypes.Name, user .Hoten),
+                    new Claim(ClaimTypes.Role, "Customer"),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), // Unique ID cho token
+                    new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()), // Issued at
+                };
+
+                // Bắt đầu GenerateAccessToken và RefreshToken
+                var accessToken = _tokenService.GenerateAccessToken(claims);
+                var refreshToken = _tokenService.GenerateRefreshToken();
+
+                var loginResponse = new LoginResponse
+                {
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken,
+                    RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
+                    Id = user.Id,
+                    Role = "Customer"
+                };
+
+                return new APIResponse<LoginResponse>(success: true, message: "Đăng nhập thành công", loginResponse);
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi đăng nhập user");
+
+                return new APIResponse<LoginResponse>(
+                    success: false,
+                    message: $"Đã xảy ra lỗi trong quá trình đăng nhập",
+                    data: null
+                );
+            }
         }
 
-        public Task<APIResponse<LoginResponse>> Login(LoginRequest loginRequest)
+        public async Task<APIResponse<LoginResponse>> Register(Register register)
         {
-            throw new NotImplementedException();
+            var inputValidation = InputValidation(null, register);
+
+            if (!inputValidation.Item1)
+            {
+                return new APIResponse<LoginResponse>(success: inputValidation.Item1, message: inputValidation.Item2);
+            }
+
+            if (!IsValidPhoneNumber(register.SDT))
+            {
+                return new APIResponse<LoginResponse>(
+                    success: false,
+                    message: "Số điện thoại không hợp lệ (phải là 10 số, bắt đầu bằng 0)",
+                    null
+                );
+            }
+
+            try
+            {
+                bool checkExistsCCCD = await _unitOfWork.UserRepository.IsSocmndExistsAsync(register.CCCD);
+                if (checkExistsCCCD == true)
+                {
+                    return new APIResponse<LoginResponse>(success: false, message: "CCCD này đã tồn tại", null);
+                }
+
+                // Hashpassword
+                (bool, string) passwordHash = HashPassword(register.Password);
+                if (!passwordHash.Item1)
+                {
+                    return new APIResponse<LoginResponse>(success: passwordHash.Item1, message: passwordHash.Item2);
+                }
+
+                int idUserMax = await _unitOfWork.UserRepository.MaxAsync(u => u.Id);
+
+                // Đăng ký thông tin hành chính
+                var newUser = new User
+                {
+                    Id = idUserMax +1 ,
+                    Socmnd = register.CCCD,
+                    PasswordHash = passwordHash.Item2,
+                    Sdt = register.SDT,
+                    Hoten = register.HOTEN,
+                    Ngaysinh = register.NgaySinh,
+                    Namsinh = register.NgaySinh.Value.ToString("yyyy"),
+                    Phai = register.Phai.Value,
+                    quoctich = register.QuocTich,
+                    dantoc = register.DanToc,
+                    matinh = register.TinhThanh,
+                    maphuongxa = register.TinhThanh+register.PhuongXa,
+                    Email = register.Email,
+                };
+
+                await _unitOfWork.UserRepository.AddAsync(newUser);
+                await _unitOfWork.SaveChangesAsync();
+
+                var loginRequest = new LoginRequest
+                {
+                    CCCD = register.CCCD,
+                    Password = register.Password,
+                };
+
+                return await Login(loginRequest);
+            }
+            catch (Exception ex)
+            {
+                 _logger.LogError(ex, "Lỗi khi đăng ký user");
+
+                return new APIResponse<LoginResponse>(
+                    success: false,
+                    message: $"Đã xảy ra lỗi trong quá trình đăng ký",
+                    data: null
+                );
+            }
         }
 
-        public Task<APIResponse<LoginResponse>> Register(Register register)
+        private (bool, string) PasswordValidation(string password)
         {
-            
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                return (false, "Mật khẩu không được để trống");
+            }
+
+            if (password.Length < 8)
+            {
+                return (false, "Mật khẩu ít nhất 8 ký tự");
+            }
+
+            if (password.Contains(" "))
+            {
+                return (false, "Mật khẩu không được chứa khoảng trắng");
+            }
+
+            bool isFirstUpper = char.IsUpper(password[0]);
+
+            if (!isFirstUpper)
+            {
+                return (false, "Ký tự đầu tiên phải in hoa");
+            }
+
+            if (!Regex.IsMatch(password, @"[^a-zA-Z0-9]"))
+            {
+                return (false, "Chuỗi phải có ký tự đặt biệt");
+            }
+
+            if (!Regex.IsMatch(password, @"\d"))
+            {
+                return (false, "Chuỗi ít nhất phải có ký tự số");
+            }
+
+            return (true, "Mật khẩu hợp lệ");
+        }
+
+        private (bool,string) HashPassword(string password)
+        {
+            var (isValid, message) = PasswordValidation(password);
+            if (!isValid)
+            {
+                return (false, message);
+            }
+
+            // BCrypt tự động generate salt và lưu trong hash
+            string hash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
+            return (true, hash);
+        }
+
+        private bool VerifyPassword(string password, string hash)
+        {
+            try
+            {
+                return BCrypt.Net.BCrypt.Verify(password, hash);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool IsValidPhoneNumber(string sdt)
+        {
+            // SĐT Việt Nam: 10 số, bắt đầu bằng 0
+            return !string.IsNullOrWhiteSpace(sdt) &&
+                   Regex.IsMatch(sdt, @"^0\d{9}$");
+        }
+
+        private (bool, string) InputValidation (LoginRequest? loginRequest, Register? register)
+        {
+            return (loginRequest, register) switch
+            {
+                ({ CCCD: null or "" }, _) => (false, "CCCD không được để trống"),
+                ({ Password: null or "" }, _) => (false, "Password không được để trống"),
+                (null, { CCCD: null or "" }) => (false, "CCCD không được để trống"),
+                (null, { SDT: null or "" }) => (false, "SDT không được để trống"),
+                (null, { HOTEN: null or "" }) => (false, "Họ và tên không được để trống"),
+                (null, { Password: null or "" }) => (false, "Mật khẩu không được để trống"),
+                (null, { NgaySinh: null}) => (false, "Ngày sinh không được để trống"),
+                (null, { Phai: null }) => (false, "Giới tính không được để trống"),
+                (null, { QuocTich: null or "" }) => (false, "Quốc tịch không được để trống"),
+                (null, { DanToc: null or "" }) => (false, "Dân tộc không được để trống"),
+                (null, { TinhThanh: null or "" }) => (false, "Tỉnh thành không được để trống"),
+                (null, { PhuongXa: null or "" }) => (false, "Phường xã không được để trống"),
+                _ => (true, "Thỏa mãn điều kiện")
+            };
         }
     }
 }

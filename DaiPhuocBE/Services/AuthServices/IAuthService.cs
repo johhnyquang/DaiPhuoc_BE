@@ -1,5 +1,6 @@
 ﻿using DaiPhuocBE.DTOs;
 using DaiPhuocBE.DTOs.AuthDTOs;
+using DaiPhuocBE.Models.Master;
 
 namespace DaiPhuocBE.Services.AuthServices
 {

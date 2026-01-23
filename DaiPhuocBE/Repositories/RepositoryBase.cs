@@ -56,6 +56,16 @@ namespace DaiPhuocBE.Repositories
             return await _dbSet.FindAsync(id);
         }
 
+        public async Task<int> MaxAsync(Expression<Func<TEntity, int>> predicate)
+        {
+            // Kiểm tra xem table có rỗng hay không
+            if (!await _context.Set<TEntity>().AnyAsync())
+            {
+                return 0;
+            }
+            return await _dbSet.MaxAsync(predicate);
+        }
+
         public void UpdateAsync(TEntity entity)
         {
             _dbSet.Update(entity);

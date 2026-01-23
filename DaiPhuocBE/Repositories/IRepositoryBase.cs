@@ -10,6 +10,7 @@ namespace DaiPhuocBE.Repositories
         Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate);
         Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
         Task<int> CountAsync(Expression<Func<TEntity, bool>> predicate);
+        Task<int> MaxAsync(Expression<Func<TEntity, int>> predicate);
         Task AddAsync(TEntity entity);
         void UpdateAsync(TEntity entity);
         void DeleteAsync(TEntity entity);

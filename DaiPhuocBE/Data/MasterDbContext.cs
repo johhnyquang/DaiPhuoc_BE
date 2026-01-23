@@ -7,19 +7,18 @@ namespace DaiPhuocBE.Data;
 
 public partial class MasterDbContext : DbContext
 {
-    public readonly string MasterSchema;
     public readonly string TransactionSchema;
-    public MasterDbContext(
-        DbContextOptions<MasterDbContext> options, 
-        string masterSchema = "", 
-        string transactionSchema = "")
+    private readonly string MasterSchema;
+
+    public MasterDbContext(DbContextOptions<MasterDbContext> options, IConfiguration configuration)
         : base(options)
     {
-        MasterSchema = masterSchema;
-        TransactionSchema = transactionSchema;
+        TransactionSchema = configuration.GetSection("SchemaName").Value ?? string.Empty;
+        MasterSchema = configuration.GetSection("SchemaName").Value ?? string.Empty;
     }
 
     public virtual DbSet<Btdbn> Btdbns { get; set; }
+    public virtual DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -218,8 +217,153 @@ public partial class MasterDbContext : DbContext
                 .HasDefaultValueSql("0")
                 .HasColumnName("USERID");
         });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("USERS");
+
+            entity.HasIndex(e => e.Sdt, "UQ_USERS_SDT").IsUnique();
+
+            entity.HasIndex(e => e.Socmnd, "UQ_USERS_SOCMND").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasPrecision(10)
+                .ValueGeneratedNever()
+                .HasColumnName("ID");
+            entity.Property(e => e.Email)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("EMAIL");
+            entity.Property(e => e.Hoten)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("HOTEN");
+            entity.Property(e => e.Namsinh)
+                .HasMaxLength(4)
+                .IsUnicode(false)
+                .HasColumnName("NAMSINH");
+            entity.Property(e => e.Ngaysinh)
+                .HasColumnType("DATE")
+                .HasColumnName("NGAYSINH");
+            entity.Property(e => e.PasswordHash)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("PASSWORD_HASH");
+            entity.Property(e => e.Phai)
+                .HasPrecision(1)
+                .HasColumnName("PHAI");
+            entity.Property(e => e.Sdt)
+                .HasMaxLength(15)
+                .IsUnicode(false)
+                .HasColumnName("SDT");
+            entity.Property(e => e.Socmnd)
+                .HasMaxLength(20)
+                .IsUnicode(false)
+                .HasColumnName("SOCMND");
+            entity.Property(e => e.quoctich)
+                  .HasMaxLength(250)
+                  .IsUnicode(false)
+                  .HasColumnName("QUOCTICH");
+            entity.Property(e => e.dantoc)
+                  .HasMaxLength(250)
+                  .IsUnicode(false)
+                  .HasColumnName("DANTOC");
+            entity.Property(e => e.matinh)
+                  .HasMaxLength(2)
+                  .IsUnicode(false)
+                  .HasColumnName("MATINH");
+            entity.Property(e => e.maphuongxa)
+                  .HasMaxLength(7)
+                  .IsUnicode(false)
+                  .HasColumnName("MAPHUONGXA");
+        });
+
+        PhuongXaBuilder(modelBuilder);
+        TinhThanhBuilder(modelBuilder);
+        DanTocBuilder(modelBuilder);
+
         OnModelCreatingPartial(modelBuilder);
     }
+
+    #region PHƯỜNG XÃ
+    private void PhuongXaBuilder (ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PhuongXa>(entity =>
+        {
+            entity.ToTable("PHUONGXAS",MasterSchema);
+            entity.HasKey(e => e.MaPhuongXa).HasName("PK_PHUONGXAS");
+
+            entity.Property(e => e.MaPhuongXa)
+                  .HasColumnName("MAPHUONGXA")
+                  .HasColumnType("VARCHAR2(7)")
+                  .IsRequired();
+
+            entity.Property(e => e.TenPhuongXa)
+                  .HasColumnName("TENPHUONGXA")
+                  .HasColumnType("VARCHAR2(250)")
+                  .IsRequired();
+
+            entity.Property(e => e.VietTat)
+                  .HasColumnName("VIETTAT")
+                  .HasColumnType("VARCHAR2(5)");
+
+            entity.Property(e => e.Hide)
+                  .HasColumnName("HIDE")
+                  .HasColumnType("NUMBER(1)")
+                  .HasDefaultValue(0);
+        });
+    }
+    #endregion
+
+    #region TỈNH THÀNH
+    private void TinhThanhBuilder(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<TinhThanh>(entity =>
+        {
+            entity.ToTable("TINHTHANHS",MasterSchema);
+            entity.HasKey(e => e.MaTinhThanh).HasName("PK_TINHTHANHS");
+
+            entity.Property(e => e.TenTinhThanh)
+                  .HasColumnName("TENTINHTHANH")
+                  .HasColumnType("VARCHAR2(2)")
+                  .IsRequired();
+
+            entity.Property(e => e.TenTinhThanh)
+                  .HasColumnName("TENTINHTHANH")
+                  .HasColumnType("VARCHAR2(250)")
+                  .IsRequired();
+
+            entity.Property(e => e.VietTat)
+                  .HasColumnName("VIETTAT")
+                  .HasColumnType("VARCHAR2(5)");
+
+            entity.Property(e => e.Hide)
+                  .HasColumnName("HIDE")
+                  .HasColumnType("NUMBER(1)")
+                  .HasDefaultValue(0);
+        });
+    }
+    #endregion
+
+    #region DÂN TỘC
+    private void DanTocBuilder (ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<DanToc>(entity =>
+        {
+            entity.ToTable("BTDDT", MasterSchema);
+            entity.HasKey(e => e.MaDanToc).HasName("PK_BTDDT");
+
+            entity.Property(e => e.TenDanToc)
+                  .HasColumnName("DANTOC")
+                  .HasColumnType("NVARCHAR2(254)");
+
+            entity.Property (e => e.Hide)
+                  .HasColumnName("HIDE")
+                  .HasColumnType("NUMBER(1)")
+                  .HasDefaultValue (0);
+        });
+    }
+    #endregion
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }

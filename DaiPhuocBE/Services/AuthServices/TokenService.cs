@@ -8,13 +8,9 @@ using System.Text;
 
 namespace DaiPhuocBE.Services.AuthServices
 {
-    public class TokenService : ITokenService
+    public class TokenService(IOptions<JwtSettings> options) : ITokenService
     {
-        private readonly JwtSettings _jwtSetting;
-        public TokenService(IOptions<JwtSettings> options)
-        {
-            _jwtSetting = options.Value;
-        }
+        private readonly JwtSettings _jwtSetting = options.Value;
 
         public string GenerateRefreshToken()
         {

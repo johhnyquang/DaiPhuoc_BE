@@ -37,8 +37,8 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
             services.AddScoped<Func<string, MasterDbContext>>(provider =>
             {
                 var options = provider.GetRequiredService<DbContextOptions<MasterDbContext>>();
-                string schemaName = configurations.GetSection("SchemaName").Value!.ToString();
-                return (schema) => new MasterDbContext(options, schemaName, schema);
+                var configuration = provider.GetRequiredService<IConfiguration>();
+                return (schema) => new MasterDbContext(options, configuration);
             });
         }
     }
