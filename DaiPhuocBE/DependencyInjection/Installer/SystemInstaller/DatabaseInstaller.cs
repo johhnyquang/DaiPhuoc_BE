@@ -31,6 +31,7 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
                     sqlOptions.UseOracleSQLCompatibility("11");
                     sqlOptions.CommandTimeout(dbConfig.CommandTimeout);
                 }).ReplaceService<IModelCacheKeyFactory, SchemaCacheKeyFactory>()
+                .EnableSensitiveDataLogging()
                 .LogTo(Console.WriteLine, LogLevel.Information); // in câu sql ra console
             });
 

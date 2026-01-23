@@ -19,7 +19,19 @@ namespace DaiPhuocBE.Repositories
         public IUserRepository UserRepository => _userRepository ??= new UserRepository.UserRepository(_context);
 
         private IRepositoryBase<Btdbn>? _btdbnRepository;
-        public IRepositoryBase<Btdbn> BTDBNRepository => _btdbnRepository ??= new Repositories.RepositoryBase<Btdbn>(_context);
+        public IRepositoryBase<Btdbn> BtdbnRepository => _btdbnRepository ??= new Repositories.RepositoryBase<Btdbn>(_context);
+
+        private IRepositoryBase<Tinhthanh>? _tinhthanhRepository;
+        public IRepositoryBase<Tinhthanh> TinhThanhRepository => _tinhthanhRepository ??= new Repositories.RepositoryBase<Tinhthanh>(_context);
+
+        private IRepositoryBase<Phuongxa>? _phuongXaRepository;
+        public IRepositoryBase<Phuongxa> PhuongXaRepository => _phuongXaRepository ??= new Repositories.RepositoryBase<Phuongxa>(_context);
+
+        private IRepositoryBase<Btddt>? _dantocRepository;
+        public IRepositoryBase<Btddt> DanTocRepository => _dantocRepository ??= new Repositories.RepositoryBase<Btddt>(_context);
+
+        private IRepositoryBase<Dmquocgium>? _dmQuocGiaRepository;
+        public IRepositoryBase<Dmquocgium> DmQuocGiaRepository => _dmQuocGiaRepository ??= new Repositories.RepositoryBase<Dmquocgium>(_context);
 
         public async Task BeginTransactionAsync()
         {

@@ -1,10 +1,15 @@
-﻿namespace DaiPhuocBE.Models.Master
+﻿using System;
+using System.Collections.Generic;
+
+namespace DaiPhuocBE.Models.Master;
+
+public partial class Phuongxa
 {
-    public partial class PhuongXa
-    {
-        public string MaPhuongXa { get; set; } = null!;
-        public string TenPhuongXa { get; set; } = null!;
-        public string? VietTat { get; set; }    
-        public int Hide { get; set; } = 0;
-    }
+    public string Maphuongxa { get; set; } = null!;
+
+    public string Tenphuongxa { get; set; } = null!;
+
+    public string? Viettat { get; set; }
+
+    public bool? Hide { get; set; }
 }
