@@ -1,8 +1,10 @@
-﻿using DaiPhuocBE.DTOs.AuthDTOs;
+﻿using DaiPhuocBE.DTOs;
+using DaiPhuocBE.DTOs.AuthDTOs;
 using DaiPhuocBE.Services.AuthServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace DaiPhuocBE.Controllers
 {
@@ -13,7 +15,15 @@ namespace DaiPhuocBE.Controllers
     {
         private readonly IAuthService _authService = authService;
 
+        /// <summary>
+        /// Đăng ký user mới trong hệ thống
+        /// </summary>
+        /// <param name="register">Thông tin người dùng cần đăng ký</param>
+        /// <returns>Tạo user thành công và gọi hàm Login để thực hiện đăng nhập</returns>
         [HttpPost("Register")]
+        [SwaggerOperation(Summary = "Tạo user mới")]
+        [SwaggerResponse(201, "Created", typeof(LoginResponse))]
+        [SwaggerResponse(400, "Bad Request", typeof(APIResponse<object>))]
         public async Task<IActionResult> RegisterAsync([FromBody] Register register)
         {
             try
@@ -24,7 +34,7 @@ namespace DaiPhuocBE.Controllers
                     return BadRequest(result);
                 }
 
-                return Ok(result);
+                return CreatedAtAction(nameof(Login),result);
             }
             catch (Exception ex)
             {
@@ -33,7 +43,7 @@ namespace DaiPhuocBE.Controllers
         }
 
         [HttpPost("Login")]
-        public async Task<IActionResult> LoginAsync([FromBody] LoginRequest loginRequest)
+        public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
             try
             {
@@ -45,6 +55,25 @@ namespace DaiPhuocBE.Controllers
 
                 return Ok(result);
 
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Internal Server Error {ex.Message}");
+            }
+        }
+
+        [HttpPost("ChangePassword")]
+        public async Task<IActionResult> ChangePasswordAsync([FromBody] LoginRequest changePassword)
+        {
+            try
+            {
+                var result = await _authService.ChangePassword(changePassword);
+                if (!result.Success)
+                {
+                    return BadRequest(result);
+                }
+
+                return Ok(result);
             }
             catch (Exception ex)
             {

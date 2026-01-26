@@ -8,5 +8,6 @@ namespace DaiPhuocBE.Services.AuthServices
     {
         Task<APIResponse<LoginResponse>> Register(Register register);
         Task<APIResponse<LoginResponse>> Login(LoginRequest loginRequest);
+        Task<APIResponse<LoginResponse>> ChangePassword(LoginRequest changePassword);
     }
 }

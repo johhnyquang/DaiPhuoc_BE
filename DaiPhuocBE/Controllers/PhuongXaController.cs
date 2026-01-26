@@ -1,6 +1,8 @@
-﻿using DaiPhuocBE.DTOs;
+﻿using DaiPhuocBE.Contants.Cache;
+using DaiPhuocBE.DTOs;
 using DaiPhuocBE.Models.Master;
 using DaiPhuocBE.Repositories;
+using DaiPhuocBE.Services.CacheServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -11,18 +13,33 @@ namespace DaiPhuocBE.Controllers
     [AllowAnonymous]
     [Route("api/[controller]")]
     [ApiController]
-    public class PhuongXaController (IUnitOfWork unitOfWork, ILogger<TinhThanhController> logger) : ControllerBase
+    public class PhuongXaController (IUnitOfWork unitOfWork, ILogger<TinhThanhController> logger, ICacheService cacheService) : ControllerBase
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ILogger<TinhThanhController> _logger = logger;
+        private readonly ICacheService _cacheService = cacheService;
 
         [HttpGet]
         public async Task<IActionResult> GetPhuongXa()
         {
             try
             {
-                var result = await _unitOfWork.PhuongXaRepository.GetAllAsync();
-                return Ok(new APIResponse<List<Phuongxa>>(success: true, message: "Lấy danh sách phường xã thành công", data: result.ToList()));
+                List<Phuongxa> result = new List<Phuongxa>();
+
+                if (await _cacheService.ExistsAsync(CacheKeys.Phuongxa_All))
+                {
+                    result = await _cacheService.GetAsync<List<Phuongxa>>(CacheKeys.Phuongxa_All);
+                }
+                else
+                {
+                    var response = await _unitOfWork.PhuongXaRepository.GetAllAsync();
+                    result = response.ToList();
+
+                    await _cacheService.SetAsync(CacheKeys.Phuongxa_All, result,CacheExpirations.DanhMucExpiried);
+                }
+
+                    //var result = await _unitOfWork.PhuongXaRepository.GetAllAsync();
+                return Ok(new APIResponse<List<Phuongxa>>(success: true, message: "Lấy danh sách phường xã thành công", data: result));
             }
             catch (Exception ex)
             {
