@@ -4,6 +4,7 @@ using DaiPhuocBE.DTOs.AuthDTOs;
 using DaiPhuocBE.Models.Master;
 using DaiPhuocBE.Repositories;
 using DaiPhuocBE.Repositories.UserRepository;
+using DaiPhuocBE.Services.CacheServices;
 using Microsoft.Extensions.Options;
 using Microsoft.Win32;
 using System.IdentityModel.Tokens.Jwt;
@@ -14,12 +15,18 @@ using System.Text.RegularExpressions;
 
 namespace DaiPhuocBE.Services.AuthServices
 {
-    public class AuthService(ITokenService tokenService, IUnitOfWork unitOfWork, ILogger<AuthService> logger, IOptions<JwtSettings> options) : IAuthService
+    public class AuthService(
+        ITokenService tokenService, 
+        IUnitOfWork unitOfWork, 
+        ILogger<AuthService> logger, 
+        IOptions<JwtSettings> options,
+        ICacheService cacheService) : IAuthService
     {
         private readonly ITokenService _tokenService = tokenService;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ILogger<AuthService> _logger = logger;
         private readonly JwtSettings _jwtSettings = options.Value;
+        private readonly ICacheService _cacheService = cacheService;
 
         const int keySize = 64;
         const int iterations = 350000;
@@ -57,7 +64,7 @@ namespace DaiPhuocBE.Services.AuthServices
                 {
                     new Claim(ClaimTypes.NameIdentifier, user .Id.ToString()),
                     new Claim(ClaimTypes.Name, user .Hoten),
-                    new Claim(ClaimTypes.Role, "Customer"),
+                    new Claim(ClaimTypes.Role, "User"),
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), // Unique ID cho token
                     new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()), // Issued at
                 };
@@ -72,7 +79,7 @@ namespace DaiPhuocBE.Services.AuthServices
                     RefreshToken = refreshToken,
                     RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
                     Id = user.Id,
-                    Role = "Customer"
+                    Role = "User"
                 };
 
                 return new APIResponse<LoginResponse>(success: true, message: "Đăng nhập thành công", loginResponse);
@@ -136,10 +143,10 @@ namespace DaiPhuocBE.Services.AuthServices
                     Ngaysinh = register.NgaySinh,
                     Namsinh = register.NgaySinh.Value.ToString("yyyy"),
                     Phai = register.Phai.Value,
-                    quoctich = register.QuocTich,
-                    dantoc = register.DanToc,
-                    matinh = register.TinhThanh,
-                    maphuongxa = register.TinhThanh+register.PhuongXa,
+                    Quoctich = register.QuocTich,
+                    Dantoc = register.DanToc,
+                    Matinh = register.TinhThanh,
+                    Maphuongxa = register.TinhThanh+register.PhuongXa,
                     Email = register.Email,
                 };
 
@@ -161,6 +168,46 @@ namespace DaiPhuocBE.Services.AuthServices
                 return new APIResponse<LoginResponse>(
                     success: false,
                     message: $"Đã xảy ra lỗi trong quá trình đăng ký",
+                    data: null
+                );
+            }
+        }
+        public async Task<APIResponse<LoginResponse>> ChangePassword(LoginRequest changePassword)
+        {
+            var inputValidation = InputValidation(changePassword, null);
+
+            if (!inputValidation.Item1)
+            {
+                return new APIResponse<LoginResponse>(success: inputValidation.Item1, message: inputValidation.Item2);
+            }
+
+            try
+            {
+                var user = await _unitOfWork.UserRepository.GetUserBySocmndAsync(changePassword.CCCD);
+                if (user == null)
+                {
+                    return new APIResponse<LoginResponse>(success: false, message: "CCCD không tồn tại mời bạn đăng ký", null);
+                }
+
+                (bool, string) passwordUpdateHash = HashPassword(changePassword.Password);
+                if (!passwordUpdateHash.Item1)
+                {
+                    return new APIResponse<LoginResponse>(success: passwordUpdateHash.Item1, message: passwordUpdateHash.Item2);
+                }
+
+                // Lấy thông tin user ra để update lại password
+                user.PasswordHash = passwordUpdateHash.Item2;
+                await _unitOfWork.SaveChangesAsync();
+
+                return new APIResponse<LoginResponse>(success: true, message: "Đổi mật khẩu thành công vui lòng đăng nhập lại", null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi đổi mật khẩu");
+
+                return new APIResponse<LoginResponse>(
+                    success: false,
+                    message: $"Đã xảy ra lỗi trong quá trình đổi mật khẩu",
                     data: null
                 );
             }

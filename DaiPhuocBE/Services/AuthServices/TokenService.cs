@@ -45,6 +45,7 @@ namespace DaiPhuocBE.Services.AuthServices
             var tokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
+                ValidateAudience = false,
                 ValidateLifetime = false,
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),

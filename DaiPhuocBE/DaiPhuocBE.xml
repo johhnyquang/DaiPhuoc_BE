@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>DaiPhuocBE</name>
+    </assembly>
+    <members>
+        <member name="M:DaiPhuocBE.Controllers.AuthController.RegisterAsync(DaiPhuocBE.DTOs.AuthDTOs.Register)">
+            <summary>
+            Trả về giá trị của accessToken và refreshToken sau khi đăg nhập thành công
+            </summary>
+            <param name="register"></param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>

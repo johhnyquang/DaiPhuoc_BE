@@ -31,32 +31,32 @@ namespace DaiPhuocBE.Repositories
             return await _dbSet.CountAsync(predicate);
         }
 
-        public void DeleteAsync(TEntity entity)
+        public virtual void DeleteAsync(TEntity entity)
         {
            _dbSet.Remove(entity);
         }
 
-        public async Task<IEnumerable<TEntity>> FindAsync(Expression<Func<TEntity, bool>> predicate)
+        public virtual async Task<IEnumerable<TEntity>> FindAsync(Expression<Func<TEntity, bool>> predicate)
         {
             return await _dbSet.Where(predicate).ToListAsync();
         }
 
-        public async Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate)
+        public virtual async Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate)
         {
             return await _dbSet.FirstOrDefaultAsync(predicate);
         }
 
-        public async Task<IEnumerable<TEntity>> GetAllAsync()
+        public virtual async Task<IEnumerable<TEntity>> GetAllAsync()
         {
             return await _dbSet.ToListAsync();
         }
 
-        public async Task<TEntity?> GetByIdAsync(int id)
+        public virtual async Task<TEntity?> GetByIdAsync(dynamic id)
         {
             return await _dbSet.FindAsync(id);
         }
 
-        public async Task<int> MaxAsync(Expression<Func<TEntity, int>> predicate)
+        public virtual async Task<int> MaxAsync(Expression<Func<TEntity, int>> predicate)
         {
             // Kiểm tra xem table có rỗng hay không
             if (!await _context.Set<TEntity>().AnyAsync())
@@ -66,7 +66,7 @@ namespace DaiPhuocBE.Repositories
             return await _dbSet.MaxAsync(predicate);
         }
 
-        public void UpdateAsync(TEntity entity)
+        public virtual void UpdateAsync(TEntity entity)
         {
             _dbSet.Update(entity);
         }

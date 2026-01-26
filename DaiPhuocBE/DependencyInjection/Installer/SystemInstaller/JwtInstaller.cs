@@ -54,6 +54,8 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
                     ValidateIssuer = jwtConfig.ValidateIssuer,
                     ValidIssuer = jwtConfig.Issuer,
 
+                    ValidateAudience = false,
+
                     // Validate token còn hạn không
                     ValidateLifetime = jwtConfig.ValidateLifetime,
 
@@ -140,7 +142,7 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
                         else
                         {
                             errorCode = "AUTHENTICATION_REQUIRED";
-                            errorMessage = "Authentication is required to access this resource.";
+                            errorMessage = $"Authentication is required to access this resource. {context.Error}";
                         }
 
                         var detailError = new
@@ -168,12 +170,15 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
                 };
             });
 
-            services.AddAuthorization(options =>
-            {
-                options.DefaultPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
-                options.AddPolicy("AdminOnly", policy =>
-                       policy.RequireRole("Admin"));
-            });
+            //services.AddAuthorization(options =>
+            //{
+            //    options.DefaultPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+            //    options.AddPolicy("AdminPolicy", policy =>
+            //           policy.RequireRole("Admin"));
+            //});
+
+            services.AddAuthorization();
+            services.AddAuthorization();
         }
     }
 }
