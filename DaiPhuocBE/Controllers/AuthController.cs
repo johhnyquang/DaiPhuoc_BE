@@ -4,6 +4,7 @@ using DaiPhuocBE.Services.AuthServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Win32;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace DaiPhuocBE.Controllers
@@ -28,7 +29,11 @@ namespace DaiPhuocBE.Controllers
         {
             try
             {
-                var result = await _authService.Register(register);
+                var request = register;
+                request.IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                Console.WriteLine(request.IpAddress);
+
+                var result = await _authService.Register(request);
                 if (!result.Success)
                 {
                     return BadRequest(result);
@@ -47,6 +52,9 @@ namespace DaiPhuocBE.Controllers
         {
             try
             {
+                var request = loginRequest;
+                request.IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
                 var result = await _authService.Login(loginRequest);
                 if (!result.Success)
                 {

@@ -13,6 +13,8 @@
         public string TinhThanh { get;set; } = string.Empty;
         public string PhuongXa { get; set; } = string.Empty;
         public string? Email { get; set; }
+        public string? IpAddress { get; set; }
+        public string? DeviceId { get; set; }
 
     }
 }

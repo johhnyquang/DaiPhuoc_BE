@@ -22,7 +22,7 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
 
             var redisConfigurationOptions = ConfigurationOptions.Parse(redisConfig.ConnectionString);
             // Config Redis with production enviroment
-            if (!redisConfig.EnviromentEnabled)
+            if (redisConfig.EnviromentEnabled)
             {
                 redisConfigurationOptions.AbortOnConnectFail = false; // Không crash khi Redis down
                 redisConfigurationOptions.ConnectTimeout = 5000;
@@ -32,10 +32,12 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
             }
 
             // Logging
-            var logger = services.BuildServiceProvider().GetRequiredService<ILogger<RedisInstaller>>();
+            //var logger = services.BuildServiceProvider().GetRequiredService<ILogger<RedisInstaller>>();
 
             services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
+                var logger = sp.GetRequiredService<ILogger<RedisInstaller>>();
+
                 var connection = ConnectionMultiplexer.Connect(redisConfigurationOptions);
 
                 // Log connection events
