@@ -73,6 +73,22 @@ namespace DaiPhuocBE.Services.AuthServices
                 var accessToken = _tokenService.GenerateAccessToken(claims);
                 var refreshToken = _tokenService.GenerateRefreshToken();
 
+                // Insert cache chỉ lưu refreshtoken
+                // Nếu cache tồn tại thì xóa và insert lại 
+                if (await _cacheService.ExistsAsync($"refresh:{user.Id}"))
+                {
+                    await _cacheService.RemoveAsync($"refresh:{user.Id}");
+                }
+
+                // Nếu cache chưa tồn tại thì insert
+                var value = new
+                {
+                    token = refreshToken,
+                    deviceId = loginRequest.DeviceId ?? string.Empty,
+                    ipAddress = loginRequest.IpAddress ?? string.Empty,
+                    createdAt = DateTime.UtcNow,
+                };
+
                 var loginResponse = new LoginResponse
                 {
                     AccessToken = accessToken,
@@ -81,6 +97,7 @@ namespace DaiPhuocBE.Services.AuthServices
                     Id = user.Id,
                     Role = "User"
                 };
+                await _cacheService.SetAsync($"refresh:{user.Id}", value, loginResponse.RefreshTokenExpiryTime.TimeOfDay);
 
                 return new APIResponse<LoginResponse>(success: true, message: "Đăng nhập thành công", loginResponse);
 
@@ -141,8 +158,8 @@ namespace DaiPhuocBE.Services.AuthServices
                     Sdt = register.SDT,
                     Hoten = register.HOTEN,
                     Ngaysinh = register.NgaySinh,
-                    Namsinh = register.NgaySinh.Value.ToString("yyyy"),
-                    Phai = register.Phai.Value,
+                    Namsinh = register.NgaySinh.HasValue ? register.NgaySinh.Value.ToString("yyyy") : "1900",
+                    Phai = register.Phai.HasValue == true ? true : false,
                     Quoctich = register.QuocTich,
                     Dantoc = register.DanToc,
                     Matinh = register.TinhThanh,
@@ -157,6 +174,8 @@ namespace DaiPhuocBE.Services.AuthServices
                 {
                     CCCD = register.CCCD,
                     Password = register.Password,
+                    DeviceId = register.DeviceId ?? string.Empty,
+                    IpAddress = register.IpAddress ?? string.Empty
                 };
 
                 return await Login(loginRequest);
