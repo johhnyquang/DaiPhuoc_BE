@@ -20,17 +20,54 @@ namespace DaiPhuocBE.Services.AuthServices
         IUnitOfWork unitOfWork, 
         ILogger<AuthService> logger, 
         IOptions<JwtSettings> options,
-        ICacheService cacheService) : IAuthService
+        ICacheService cacheService,
+        IHttpContextAccessor http) : IAuthService
     {
         private readonly ITokenService _tokenService = tokenService;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ILogger<AuthService> _logger = logger;
         private readonly JwtSettings _jwtSettings = options.Value;
         private readonly ICacheService _cacheService = cacheService;
+        private readonly IHttpContextAccessor _http = http;
 
         const int keySize = 64;
         const int iterations = 350000;
         HashAlgorithmName hashAlgorithm = HashAlgorithmName.SHA512;
+
+        private async Task<LoginResponse> GenerateTokens (IEnumerable<Claim> claims, User user, LoginRequest? loginRequest, RotateModel? rotateRequest)
+        {
+            // Bắt đầu GenerateAccessToken và RefreshToken
+            var accessToken = _tokenService.GenerateAccessToken(claims);
+            var refreshToken = _tokenService.GenerateRefreshToken();
+
+            // Insert cache chỉ lưu refreshtoken
+            // Nếu cache tồn tại thì xóa và insert lại 
+            if (await _cacheService.ExistsAsync($"Refreshs:{user.Id}"))
+            {
+                await _cacheService.RemoveAsync($"Refreshs:{user.Id}");
+            }
+
+            // Nếu cache chưa tồn tại thì insert
+            var value = new RefreshTokenModel
+            {
+                RefreshToken = refreshToken,
+                DeviceId = loginRequest != null ? loginRequest.DeviceId : "",
+                IpAddress = loginRequest != null ? loginRequest.IpAddress : "",
+                CreatedAt = DateTime.UtcNow,
+            };
+
+            var loginResponse = new LoginResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
+                Id = user.Id,
+                Role = "User"
+            };
+            await _cacheService.SetAsync($"Refreshs:{user.Id}", value, loginResponse.RefreshTokenExpiryTime.TimeOfDay);
+
+            return loginResponse;
+        }
 
         public async Task<APIResponse<LoginResponse>> Login(LoginRequest loginRequest)
         {
@@ -70,35 +107,7 @@ namespace DaiPhuocBE.Services.AuthServices
                 };
 
                 // Bắt đầu GenerateAccessToken và RefreshToken
-                var accessToken = _tokenService.GenerateAccessToken(claims);
-                var refreshToken = _tokenService.GenerateRefreshToken();
-
-                // Insert cache chỉ lưu refreshtoken
-                // Nếu cache tồn tại thì xóa và insert lại 
-                if (await _cacheService.ExistsAsync($"refresh:{user.Id}"))
-                {
-                    await _cacheService.RemoveAsync($"refresh:{user.Id}");
-                }
-
-                // Nếu cache chưa tồn tại thì insert
-                var value = new
-                {
-                    token = refreshToken,
-                    deviceId = loginRequest.DeviceId ?? string.Empty,
-                    ipAddress = loginRequest.IpAddress ?? string.Empty,
-                    createdAt = DateTime.UtcNow,
-                };
-
-                var loginResponse = new LoginResponse
-                {
-                    AccessToken = accessToken,
-                    RefreshToken = refreshToken,
-                    RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
-                    Id = user.Id,
-                    Role = "User"
-                };
-                await _cacheService.SetAsync($"refresh:{user.Id}", value, loginResponse.RefreshTokenExpiryTime.TimeOfDay);
-
+                var loginResponse = await GenerateTokens(claims, user, loginRequest, null);
                 return new APIResponse<LoginResponse>(success: true, message: "Đăng nhập thành công", loginResponse);
 
             }
@@ -232,6 +241,19 @@ namespace DaiPhuocBE.Services.AuthServices
             }
         }
 
+        public async Task Logout()
+        {
+
+            var userId = _http.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var jti = _http.HttpContext?.User.FindFirst("jti")?.Value;
+
+            // Set blacklist accesstoken
+            await _cacheService.SetAsync($"Blacklist:{jti}", "revoked", TimeSpan.FromMinutes(15)); // những accesstoken nào có jti nào trong list này thì sẽ được đánh dấu là đã loại bỏ "revoked"
+
+            // Delete refreshToken
+            await _cacheService.RemoveAsync($"Refreshs:{userId}"); // Vì là logout nên refreshtoken còn hạn cũng cho xóa luôn
+        }
+
         private (bool, string) PasswordValidation(string password)
         {
             if (string.IsNullOrWhiteSpace(password))
@@ -319,6 +341,40 @@ namespace DaiPhuocBE.Services.AuthServices
                 (null, { PhuongXa: null or "" }) => (false, "Phường xã không được để trống"),
                 _ => (true, "Thỏa mãn điều kiện")
             };
+        }
+
+        public async Task<APIResponse<LoginResponse>> RotationToken(RotateModel rotateRequest)
+        {
+            // Lấy thông tin user từ accessToken đã hết hạn
+            var principal = _tokenService.GetPrincipalFromExpiredToken(rotateRequest.AccessToken);
+            var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userId == null)
+            {
+                return new APIResponse<LoginResponse>(success: false, message: "Invalid accessToken", null);
+            }
+
+            // Tìm RefreshToken trong cache
+            var cachedRefresh = await _cacheService.GetAsync<RefreshTokenModel>($"Refreshs:{userId}");
+            if (cachedRefresh == null || cachedRefresh.RefreshToken != rotateRequest.RefreshToken)
+            {
+                return new APIResponse<LoginResponse>(success: false, message: "Invalid refreshToken", null);
+            }
+
+            // Xóa refreshToken cũ trong cache
+            await _cacheService.RemoveAsync($"Refreshs:{userId}");
+ 
+            // Tạo mới accessToken và refreshToken
+            var user = await _unitOfWork.UserRepository.GetByIdAsync(int.Parse(userId));
+
+            if (user == null)
+            {
+                return new APIResponse<LoginResponse>(success: false, message: "User not found", null);
+            }
+
+            LoginResponse newToken = await GenerateTokens(principal.Claims,user, null, rotateRequest);
+
+            return new APIResponse<LoginResponse>(success: true, message: "Rotation successfully", newToken);
         }
     }
 }

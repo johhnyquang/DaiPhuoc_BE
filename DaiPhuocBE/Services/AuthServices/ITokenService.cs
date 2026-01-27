@@ -6,6 +6,6 @@ namespace DaiPhuocBE.Services.AuthServices
     {
         string GenerateAccessToken(IEnumerable<Claim> claims);
         string GenerateRefreshToken();
-        ClaimsPrincipal GetPrincipalFromExpiredToken(string token); // Lấy thông tin từ claims từ accessToken hết hạn phục vụ cho refreshtoken
+        ClaimsPrincipal GetPrincipalFromExpiredToken(string accessToken); // Lấy thông tin từ claims từ accessToken hết hạn phục vụ cho refreshtoken
     }
 }
