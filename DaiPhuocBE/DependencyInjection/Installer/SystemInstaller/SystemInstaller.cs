@@ -58,6 +58,8 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
 
             });
 
+            services.AddHttpContextAccessor();
+
         }
     }
 }

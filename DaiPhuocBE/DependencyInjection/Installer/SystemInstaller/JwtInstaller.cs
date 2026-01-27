@@ -1,8 +1,10 @@
 ﻿
 using DaiPhuocBE.DependencyInjection.Options;
+using DaiPhuocBE.Services.CacheServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Text;
 
@@ -104,14 +106,31 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
                     },
 
                     // Token đã validate thành công
-                    OnTokenValidated = context =>
+                    OnTokenValidated =  async context =>
                     {
+                        var redis = context.HttpContext.RequestServices.GetRequiredService<ICacheService>();
+                        var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<JwtInstaller>>();
+
+                        if (string.IsNullOrEmpty(jti))
+                        {
+                            context.Fail("Missing jti");
+                            logger.LogWarning("Authentication failed: Missing jti claim");
+                            return;
+                        }
+
+                        // Kiểm tra token có bị thu hồi hay không
+                        if (await redis.ExistsAsync($"Blacklist:{jti}") == true)
+                        {
+                            context.Fail("Token has been revoked");
+                            logger.LogWarning("Authentication failed: Token with jti {Jti} has been revoked", jti);
+                            return;
+                        }
+
                         // Log thành công
                         var userId = context.Principal?.FindFirst("sub")?.Value;
-                        var logSuccess = context.HttpContext.RequestServices.GetRequiredService<ILogger<JwtInstaller>>();
-                        logSuccess.LogInformation("User {UserId} authenticated successfully", userId);
-
-                        return Task.CompletedTask;
+                        logger.LogInformation("User {UserId} authenticated successfully", userId);
+                        return;
                     },
 
                     // Khi gửi challenge response (401)

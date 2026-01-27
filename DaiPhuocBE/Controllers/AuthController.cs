@@ -1,6 +1,7 @@
 ﻿using DaiPhuocBE.DTOs;
 using DaiPhuocBE.DTOs.AuthDTOs;
 using DaiPhuocBE.Services.AuthServices;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -87,6 +88,44 @@ namespace DaiPhuocBE.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, $"Internal Server Error {ex.Message}");
             }
+        }
+
+        [HttpPost("Refresh")]
+        public async Task<IActionResult> RefreshTokenAsync([FromBody] RotateModel rotateRequest)
+        {
+            try
+            {
+                var result = await _authService.RotationToken(rotateRequest);
+                if (!result.Success)
+                {
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Internal Server Error {ex.Message}");
+            }
+        }
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
+        [HttpPost("Logout")]
+        public async Task<IActionResult> LogoutAsync()
+        {
+            try
+            {
+                await _authService.Logout();
+                return Ok(new
+                {
+                    Success = true,
+                    Message = "Đăng xuất thành công",
+                    Apiversion = "V1"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Internal Server Error {ex.Message}");
+            }   
         }
     }
 }

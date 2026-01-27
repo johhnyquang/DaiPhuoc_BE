@@ -22,6 +22,8 @@ namespace DaiPhuocBE.Controllers
         [HttpGet]
         public async Task<IActionResult> GetDanToc()
         {
+
+
             try
             {
                 List<DanTocResponse> result = new List<DanTocResponse>();
