@@ -19,16 +19,12 @@ public class UserService (IUnitOfWork unitOfWork, ILogger<UserService> logger) :
     private async Task<Phuongxa> GetInfoPhuongXaByIdAsync(string maPX) => await _unitOfWork.PhuongXaRepository.GetByIdAsync(maPX);
     private async Task<Btddt> GetInfoDanTocByIdAsync(string maDT) => await _unitOfWork.DanTocRepository.GetByIdAsync(maDT);
 
-    public async Task<APIResponse<UserResponse>> GetInformationUser(string cccd)
+    public async Task<APIResponse<UserResponse>> GetInformationUser(int id)
     {
-        if (string.IsNullOrWhiteSpace(cccd))
-        {
-            return new APIResponse<UserResponse>(success: false, message: "CCCD không được để trống", data: null);
-        }
-
         try
         {
-            var userInfo = await _unitOfWork.UserRepository.GetUserBySocmndAsync(cccd);
+            //var userInfo = await _unitOfWork.UserRepository.GetUserBySocmndAsync(cccd);
+            var userInfo = await _unitOfWork.UserRepository.GetByIdAsync(id);
             if (userInfo == null)
             {
                 return new APIResponse<UserResponse>(success: false, message: "Không tìm thấy thông tin vui lòng đăng ký", data: null);

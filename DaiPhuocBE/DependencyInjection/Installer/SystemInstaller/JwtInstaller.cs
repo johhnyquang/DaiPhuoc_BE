@@ -197,7 +197,6 @@ namespace DaiPhuocBE.DependencyInjection.Installer.SystemInstaller
             //});
 
             services.AddAuthorization();
-            services.AddAuthorization();
         }
     }
 }

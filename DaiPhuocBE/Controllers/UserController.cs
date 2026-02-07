@@ -13,8 +13,8 @@ namespace DaiPhuocBE.Controllers
         private readonly IUserService _userService = userService;
 
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
-        [HttpGet("GetUserInfo/{id}")]
-        public async Task<IActionResult> GetUserInfo(string id)
+        [HttpPost("GetUserInfo")]
+        public async Task<IActionResult> GetUserInfo([FromBody]int id)
         {
             try
             {
