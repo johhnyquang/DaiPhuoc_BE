@@ -273,7 +273,7 @@ namespace DaiPhuocBE.Services.AuthServices
 
             bool isFirstUpper = char.IsUpper(password[0]);
 
-            if (!isFirstUpper)
+            if (!isFirstUpper) // bỏ
             {
                 return (false, "Ký tự đầu tiên phải in hoa");
             }
@@ -349,14 +349,14 @@ namespace DaiPhuocBE.Services.AuthServices
             var principal = _tokenService.GetPrincipalFromExpiredToken(rotateRequest.AccessToken);
             var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (userId == null)
+            if (userId == null || string.IsNullOrEmpty(rotateRequest.AccessToken))
             {
                 return new APIResponse<LoginResponse>(success: false, message: "Invalid accessToken", null);
             }
 
             // Tìm RefreshToken trong cache
             var cachedRefresh = await _cacheService.GetAsync<RefreshTokenModel>($"Refreshs:{userId}");
-            if (cachedRefresh == null || cachedRefresh.RefreshToken != rotateRequest.RefreshToken)
+            if (cachedRefresh == null || cachedRefresh.RefreshToken != rotateRequest.RefreshToken || string.IsNullOrEmpty(rotateRequest.RefreshToken))
             {
                 return new APIResponse<LoginResponse>(success: false, message: "Invalid refreshToken", null);
             }

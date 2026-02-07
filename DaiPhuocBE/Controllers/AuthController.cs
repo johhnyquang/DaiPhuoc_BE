@@ -48,7 +48,16 @@ namespace DaiPhuocBE.Controllers
             }
         }
 
+        /// <summary>
+        /// User đăng nhập vào hệ thống
+        /// </summary>
+        /// <param name="loginRequest">Thông tin đăng nhập</param>
+        /// <returns>User đăng nhập thành công</returns>
         [HttpPost("Login")]
+        [SwaggerOperation(Summary = "User đăng nhập")]
+        [SwaggerResponse(200, "OK", typeof(LoginResponse))]
+        [SwaggerResponse(400, "Bad Request", typeof(APIResponse<object>))]
+
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
             try
@@ -71,7 +80,15 @@ namespace DaiPhuocBE.Controllers
             }
         }
 
+        /// <summary>
+        /// Đổi mật khẩu user
+        /// </summary>
+        /// <param name="changePassword">Mật khẩu mới</param>
+        /// <returns>Đổi mật khẩu thành công</returns>
         [HttpPost("ChangePassword")]
+        [SwaggerOperation(Summary = "User đổi mật khẩu")]
+        [SwaggerResponse(200, "OK", typeof(LoginResponse))]
+        [SwaggerResponse(400, "Bad Request", typeof(APIResponse<object>))]
         public async Task<IActionResult> ChangePasswordAsync([FromBody] LoginRequest changePassword)
         {
             try
@@ -90,6 +107,14 @@ namespace DaiPhuocBE.Controllers
             }
         }
 
+        /// <summary>
+        /// Cấp lại token cho user
+        /// </summary>
+        /// <param name="rotateRequest">Cấp lại token</param>
+        /// <returns>User đăng nhập thành công</returns>
+        [SwaggerOperation(Summary = "Mobile app gửi ngầm refreshtoken")]
+        [SwaggerResponse(200, "OK", typeof(LoginResponse))]
+        [SwaggerResponse(400, "Bad Request", typeof(APIResponse<object>))]
         [HttpPost("Refresh")]
         public async Task<IActionResult> RefreshTokenAsync([FromBody] RotateModel rotateRequest)
         {

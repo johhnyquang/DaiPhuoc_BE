@@ -5,6 +5,6 @@ namespace DaiPhuocBE.Services.CustomerServices
 {
     public interface IUserService
     {
-        Task<APIResponse<UserResponse>> GetInformationUser(string cccd);
+        Task<APIResponse<UserResponse>> GetInformationUser(int id);
     }
 }
